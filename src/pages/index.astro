@@ -15,6 +15,7 @@
  * (--v-*) on their bud + kicker. Content loading is unchanged from before.
  */
 import BaseLayout from '~/layouts/BaseLayout.astro'
+import CompostMeter from '~/components/CompostMeter.astro'
 import {
   getCategoriesWithCounts,
   getPostsInSeries,
@@ -126,6 +127,9 @@ const GAP = 7
         {seasonName} · {dateline} · <span class="count">{allPosts.length}</span> field notes
       </p>
     </section>
+
+    {/* ── CompostMeter: material-lifecycle signature module ───────────── */}
+    <CompostMeter />
 
     {/* ── The growth timeline: central stem, posts branching L/R ──────── */}
     <ol class="stem" aria-label="Field notes, newest first">

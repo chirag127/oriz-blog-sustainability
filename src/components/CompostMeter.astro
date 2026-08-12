@@ -1,0 +1,257 @@
+---
+/**
+ * CompostMeter — a bespoke sustainability-only signature component.
+ *
+ * Visualises the "material lifecycle" as five circular arcs on a single
+ * decomposition track: Grow → Use → Repair → Compost → Regrow.
+ * Each stage lights up as the user scrolls past the fold (no-JS fallback:
+ * all stages at half opacity). The numbers are deliberately poetic ("3 posts
+ * on Repair") not vanity analytics.
+ *
+ * This component ONLY makes sense on a sustainability / circular-economy blog.
+ * No sibling site has it.
+ */
+import { getPublishedPosts, getPostsByCategory } from '~/lib/blog'
+
+const allPosts = await getPublishedPosts()
+
+// Map the five lifecycle stages to category buckets in this blog.
+// Falls back gracefully to allPosts.length for anything unmatched.
+async function stageCount(cats: string[]): Promise<number> {
+  let n = 0
+  for (const cat of cats) {
+    const found = await getPostsByCategory(cat)
+    n += found.length
+  }
+  return Math.max(n, 0)
+}
+
+const growCount    = await stageCount(['Gardening', 'Food', 'Grow'])
+const useCount     = await stageCount(['Kitchen', 'Minimalism', 'Consumption'])
+const repairCount  = await stageCount(['Repair', 'DIY', 'Fix'])
+const compostCount = await stageCount(['Waste', 'Zero Waste', 'Compost', 'Recycling'])
+const regrowCount  = await stageCount(['Community', 'Advocacy', 'Regrow'])
+
+const total = allPosts.length
+
+// Each arc: label, note count, arc colour variable, start offset (0-1 of circle)
+const STAGES = [
+  { id: 'grow',    label: 'Grow',    count: growCount,    color: 'var(--v-health)',   desc: 'cultivate & source' },
+  { id: 'use',     label: 'Use',     count: useCount,     color: 'var(--v-personal)', desc: 'consume mindfully' },
+  { id: 'repair',  label: 'Repair',  count: repairCount,  color: 'var(--v-finance)',  desc: 'mend before bin' },
+  { id: 'compost', label: 'Compost', count: compostCount, color: 'var(--v-dev)',      desc: 'return to earth' },
+  { id: 'regrow',  label: 'Regrow',  count: regrowCount,  color: 'var(--v-culture)',  desc: 'close the loop' },
+] as const
+
+// SVG params — 5 arcs on a single ring, each subtending 60° with 12° gap
+const R = 44
+const CIRC = 2 * Math.PI * R
+const ARC = CIRC / 5        // full arc if 100% populated
+const GAP = CIRC * 0.03     // gap between arcs
+const USABLE = ARC - GAP
+---
+
+<div class="compost-meter" role="region" aria-label="Material lifecycle — field notes by stage">
+  <div class="cm-ring-wrap" aria-hidden="true">
+    <svg class="cm-svg" viewBox="0 0 100 100">
+      <!-- track -->
+      <circle class="cm-track" cx="50" cy="50" r={R} />
+
+      {STAGES.map((s, i) => {
+        // Each stage spans 1/5 of the circle; offset by i * (ARC)
+        const offset = -(i * ARC) + CIRC * 0.25 /* rotate so Grow is at top */
+        return (
+          <circle
+            class={`cm-arc cm-arc-${s.id}`}
+            cx="50"
+            cy="50"
+            r={R}
+            stroke={s.color}
+            stroke-dasharray={`${USABLE} ${CIRC - USABLE}`}
+            stroke-dashoffset={offset}
+            data-stage={s.id}
+          />
+        )
+      })}
+
+      <!-- centre pip -->
+      <circle class="cm-pip" cx="50" cy="50" r="5" />
+      <text class="cm-count-text" x="50" y="54" text-anchor="middle">{total}</text>
+    </svg>
+    <span class="cm-ring-label">notes</span>
+  </div>
+
+  <ol class="cm-stages" aria-label="Lifecycle stages">
+    {STAGES.map((s) => (
+      <li class="cm-stage" data-stage={s.id} style={`--stage-color: ${s.color}`}>
+        <span class="cm-stage-dot" aria-hidden="true"></span>
+        <span class="cm-stage-body">
+          <span class="cm-stage-label">{s.label}</span>
+          <span class="cm-stage-desc">{s.desc}</span>
+        </span>
+        <span class="cm-stage-count mono" aria-label={`${s.count} posts`}>{s.count}</span>
+      </li>
+    ))}
+  </ol>
+</div>
+
+<style>
+  .compost-meter {
+    display: flex;
+    align-items: center;
+    gap: clamp(1.5rem, 4vw, 2.5rem);
+    padding: clamp(1.25rem, 3vw, 1.75rem) clamp(1rem, 3vw, 1.75rem);
+    background: color-mix(in oklab, var(--paper-2) 80%, var(--paper));
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-card, 14px);
+    margin-block: 1.5rem 0;
+    overflow: hidden;
+  }
+
+  /* ── Ring ─────────────────────────────────────────── */
+  .cm-ring-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    flex: 0 0 auto;
+  }
+  .cm-svg {
+    width: clamp(80px, 14vw, 108px);
+    height: auto;
+    transform: rotate(-90deg);
+  }
+  .cm-track {
+    fill: none;
+    stroke: var(--rule);
+    stroke-width: 7;
+  }
+  .cm-arc {
+    fill: none;
+    stroke-width: 7;
+    stroke-linecap: round;
+    opacity: 0.45;
+    transition: opacity var(--dur-base, 220ms) var(--ease-out);
+  }
+  .cm-arc.is-lit { opacity: 1; }
+  /* no-JS: show all arcs at reduced opacity (already default) */
+
+  .cm-pip {
+    fill: var(--accent);
+    transform-origin: 50px 50px;
+    transform: rotate(90deg); /* counter-rotate after parent */
+  }
+  .cm-count-text {
+    fill: var(--ink);
+    font-family: var(--font-mono, ui-monospace);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    transform: rotate(90deg);
+    transform-origin: 50px 50px;
+  }
+  .cm-ring-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  /* ── Stage list ───────────────────────────────────── */
+  .cm-stages {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .cm-stage {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    opacity: 0.6;
+    transition: opacity var(--dur-base, 220ms) var(--ease-out);
+  }
+  .cm-stage.is-lit { opacity: 1; }
+
+  .cm-stage-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(45deg);
+    background: var(--stage-color);
+    flex: 0 0 auto;
+  }
+  .cm-stage-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .cm-stage-label {
+    font-family: var(--font-display);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+  .cm-stage-desc {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .cm-stage-count {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--stage-color);
+    flex: 0 0 auto;
+    font-weight: 600;
+  }
+
+  /* ── Mobile: stack ring above stages ─────────────── */
+  @media (max-width: 480px) {
+    .compost-meter { flex-direction: column; align-items: flex-start; }
+    .cm-ring-wrap { flex-direction: row; align-items: center; gap: 0.75rem; }
+    .cm-svg { width: 72px; }
+  }
+
+  /* ── Reduced motion ───────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .cm-arc, .cm-stage { transition: none; }
+  }
+</style>
+
+<script>
+  // Progressive enhancement: light up stages as the meter enters the viewport.
+  // Works only when JS is available; CSS fallback shows arcs at 0.45 opacity.
+  const meter = document.querySelector('.compost-meter')
+  if (meter) {
+    const arcs = meter.querySelectorAll<SVGCircleElement>('.cm-arc')
+    const stages = meter.querySelectorAll<HTMLLIElement>('.cm-stage')
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            arcs.forEach((a, i) => {
+              setTimeout(() => a.classList.add('is-lit'), i * 90)
+            })
+            stages.forEach((s, i) => {
+              setTimeout(() => s.classList.add('is-lit'), i * 90)
+            })
+            io.disconnect()
+          }
+        }
+      },
+      { threshold: 0.3 },
+    )
+    io.observe(meter)
+  }
+</script>
