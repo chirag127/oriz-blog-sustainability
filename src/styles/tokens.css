@@ -1,0 +1,223 @@
+/*
+ * tokens.css — "Compost" identity for the Sustainable Living notebook.
+ *
+ * Grounded in the subject's real materials: turned soil, unbleached linen,
+ * living moss, fired clay, and indigo mend-thread — NOT the glossy tech-green
+ * "eco" cliché, NOT cream+terracotta+serif, NOT acid-green-on-black, NOT the
+ * newspaper broadsheet look. Warm loam-dark surface, moss-green signal accent,
+ * serif field-notebook type.
+ *
+ * Every --color-* alias is preserved so chrome/legal/Footer components (which
+ * consume the shell token names) compile unchanged. Theme modes:
+ *   :root                              → dark loam (default)
+ *   @media (prefers-color-scheme:light)→ linen day, UNLESS [data-theme="dark"]
+ *   [data-theme="light"]               → linen day, always
+ *   [data-theme="sepia"]               → warm parchment variant
+ *   [data-theme="hc"]                  → pure black/white high contrast
+ *
+ * Vertical marker keys (dev/finance/culture/health/personal) map to the five
+ * sustainability desks: Kitchen · Repair · Verify · Grow · Field.
+ */
+:root {
+  color-scheme: dark;
+
+  /* ── loam-dark palette ─────────────────────────────────────────────────
+     Deep turned-earth surface, unbleached-linen ink, living-moss accent. */
+  --brand: #7ba05b; /* living moss / sprout — links, active, primary */
+  --brand-soft: #1f2717; /* deep leaf tint — hover, chips (dark) */
+  --success: #8fb96a;
+  --danger-color: #d98a5a; /* fired clay used as the alert tone */
+
+  --paper: #14170f; /* turned-soil near-black (warm, page bg) */
+  --paper-2: #1d2116; /* damp-earth elevated panel */
+  --surface: var(--paper-2);
+  --ink: #ecead9; /* unbleached linen text */
+  --ink-mute: #9aa083; /* dried-grass grey-green */
+  --rule: #2e3323; /* soil hairline */
+  --rule-strong: #3d4430; /* heavier furrow rule */
+
+  /* canonical accent — living moss. Everything routes through --accent. */
+  --accent: var(--brand);
+  --accent-soft: var(--brand-soft);
+  --cobalt: var(--accent); /* back-compat alias → --accent */
+  --brand-tint: var(--brand-soft);
+  --sage: var(--success);
+  --vermilion: var(--danger-color);
+  --highlighter: var(--brand);
+
+  /* desk marker colours (kicker ticks / rules only, never the page accent):
+     Kitchen · Repair · Verify · Grow · Field */
+  --v-dev: #c9743b; /* Kitchen — fired clay */
+  --v-finance: #7c86c4; /* Repair — indigo mend-thread */
+  --v-culture: #6fa8c7; /* Verify — sky / clear water */
+  --v-health: #7ba05b; /* Grow — moss */
+  --v-personal: #b6ad7a; /* Field — dried grass */
+
+  /* semantic passthroughs */
+  --color-bg: var(--paper);
+  --color-fg: var(--ink);
+  --color-accent: var(--brand);
+  --color-accent-fg: #14170f;
+  --color-sage: var(--success);
+  --color-muted: var(--ink-mute);
+  --color-border: var(--rule);
+  --color-bg-soft: var(--paper-2);
+  --color-bg-muted: var(--paper-2);
+  --color-prose: var(--ink);
+  --color-fg-muted: var(--ink-mute);
+  --color-fg-soft: var(--ink-mute);
+
+  /* color alias layer (chrome components read these) */
+  --color-brand-indigo: var(--brand); /* name kept for compatibility */
+  --color-brand-indigo-soft: var(--brand-soft);
+  --color-brand-success: var(--success);
+  --color-brand-danger: var(--danger-color);
+  --color-neutral-0: #14170f;
+  --color-neutral-50: #1d2116;
+  --color-neutral-100: #242a1b;
+  --color-neutral-200: #2e3323;
+  --color-neutral-300: #3d4430;
+  --color-neutral-500: #9aa083;
+  --color-neutral-700: #c6c8b0;
+  --color-neutral-900: #ecead9;
+  --color-neutral-1000: #fbfaf0;
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-ink-mute: var(--ink-mute);
+  --color-rule: var(--rule);
+
+  /* ── type scale (families declared once in global.css @theme) ─────────── */
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-md: 17px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  --text-3xl: 48px;
+
+  /* spacing — 8 steps */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* motion — restrained */
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+  --dur-slow: 420ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* breakpoints */
+  --bp-sm: 480px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1440px;
+
+  /* radii + containers — soft organic corners, not the zero-radius newspaper look */
+  --radius-card: 14px;
+  --radius-button: 10px;
+  --container-page: 1100px;
+}
+
+/* ── LIGHT (linen day) — system preference, unless user forced dark ─────── */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+    --brand: #4f6f38; /* darker moss for contrast on linen */
+    --brand-soft: #e4e9d6;
+    --paper: #f2efe2; /* unbleached linen */
+    --paper-2: #e9e5d4; /* pressed-paper panel */
+    --ink: #24281b; /* dark loam text */
+    --ink-mute: #6c7059; /* dried sage */
+    --rule: #d7d1bc;
+    --rule-strong: #c4bda3;
+    --color-accent-fg: #f2efe2;
+    --color-fg-soft: color-mix(in oklab, var(--ink) 55%, var(--paper));
+    --v-dev: #a85a29;
+    --v-finance: #5560a3;
+    --v-culture: #3f7d9c;
+    --v-health: #4f6f38;
+    --v-personal: #7d7448;
+    --color-neutral-50: #e9e5d4;
+    --color-neutral-100: #ddd8c4;
+    --color-neutral-200: #d7d1bc;
+    --color-neutral-500: #6c7059;
+    --color-neutral-700: #444836;
+    --color-neutral-900: #24281b;
+  }
+}
+
+/* ── LIGHT — explicit user override, wins over system ───────────────────── */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --brand: #4f6f38;
+  --brand-soft: #e4e9d6;
+  --paper: #f2efe2;
+  --paper-2: #e9e5d4;
+  --ink: #24281b;
+  --ink-mute: #6c7059;
+  --rule: #d7d1bc;
+  --rule-strong: #c4bda3;
+  --color-accent-fg: #f2efe2;
+  --color-fg-soft: color-mix(in oklab, var(--ink) 55%, var(--paper));
+  --v-dev: #a85a29;
+  --v-finance: #5560a3;
+  --v-culture: #3f7d9c;
+  --v-health: #4f6f38;
+  --v-personal: #7d7448;
+  --color-neutral-50: #e9e5d4;
+  --color-neutral-100: #ddd8c4;
+  --color-neutral-200: #d7d1bc;
+  --color-neutral-500: #6c7059;
+  --color-neutral-700: #444836;
+  --color-neutral-900: #24281b;
+}
+
+/* ── SEPIA — warm parchment, clay accent ────────────────────────────────── */
+:root[data-theme='sepia'] {
+  color-scheme: light;
+  --brand: #8a6d2f;
+  --brand-soft: #efe4cc;
+  --paper: #efe6d2;
+  --paper-2: #e6dcc4;
+  --ink: #322c1f;
+  --ink-mute: #766a4f;
+  --rule: #d8ccae;
+  --color-accent-fg: #efe6d2;
+  --color-fg-soft: color-mix(in oklab, var(--ink) 55%, var(--paper));
+  --color-neutral-50: #efe6d2;
+  --color-neutral-100: #e6dcc4;
+  --color-neutral-200: #d8ccae;
+  --color-neutral-500: #766a4f;
+  --color-neutral-700: #55492f;
+  --color-neutral-900: #322c1f;
+}
+
+/* ── HIGH-CONTRAST — pure black/white, hard borders ─────────────────────── */
+:root[data-theme='hc'] {
+  color-scheme: light;
+  --brand: #1f5c14;
+  --brand-soft: #dff0da;
+  --paper: #ffffff;
+  --paper-2: #ffffff;
+  --ink: #000000;
+  --ink-mute: #26301f;
+  --rule: #000000;
+  --color-accent-fg: #ffffff;
+  --color-fg-soft: #26301f;
+  --color-neutral-50: #ffffff;
+  --color-neutral-100: #ffffff;
+  --color-neutral-200: #000000;
+  --color-neutral-500: #26301f;
+  --color-neutral-700: #000000;
+  --color-neutral-900: #000000;
+}
