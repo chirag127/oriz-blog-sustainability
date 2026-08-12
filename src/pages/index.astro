@@ -1,17 +1,18 @@
 ---
-import SeriesSpine from '~/components/SeriesSpine.astro'
 /**
- * /  — oriz-blog homepage ("Signal Press" front page).
+ * /  — "Compost" homepage. ARCHETYPE: TIMELINE / GROWTH.
  *
- * Above the fold: a real newspaper masthead — mono dateline (Vol. N · date ·
- * dispatch count), a big Source Serif 4 nameplate, the active-series spine
- * (`●─●─○─○`), and a colour-flagged LEAD STORY. Below: three hairline strata:
- *   1. IN PROGRESS — series spines
- *   2. RECENT      — last 7 posts, each with its vertical desk kicker
- *   3. BY CATEGORY — one typographic row, each desk in its vertical colour
+ * The page is a single vertical growth-stem running down the centre. The Season
+ * Ring is the seed at the top; each post is a NODE on the stem, branching
+ * left / right alternately like leaves off a shoot. A moss-green line connects
+ * every node; leaf-buds mark each branch. This is deliberately NOT the sibling
+ * top-nav card grid, and NOT a centred magazine column of hairline strata.
  *
- * No cover images, no cards, no radius. Verticals (Dev/Finance/Culture/
- * Health/Personal) each carry their own marker colour (--v-*).
+ *   Mobile: the stem shifts to the left gutter and every node branches right
+ *   (a climbing vine), so nothing is cramped on narrow screens.
+ *
+ * Verticals (Kitchen/Repair/Verify/Grow/Field) each carry a marker colour
+ * (--v-*) on their bud + kicker. Content loading is unchanged from before.
  */
 import BaseLayout from '~/layouts/BaseLayout.astro'
 import {
@@ -28,54 +29,23 @@ import {
 import { SITE_CONFIG } from '~/lib/config'
 
 const allPosts = await getPublishedPosts()
-const lead = allPosts[0]
-const recentPosts = allPosts.slice(1, 8)
+// The whole feed becomes the growth timeline (newest = freshest shoot at top).
+const timeline = allPosts.slice(0, 12)
 
 const seriesAll = await getSeriesWithCounts()
-// In-progress: series where at least one post exists. We model "published"
-// as the count of currently-published parts. Total is exposed as a heuristic
-// (count + a small tail of "drafting" dots) — for v1 of the v2 design, we
-// just use count for total and count for published, and animate the last
-// dot as `current` so the spine has the signature glyph (`⦿`) visible.
-type InProgress = {
-  name: string
-  slug: string
-  total: number
-  published: number
-  current: number
-  latest: Date
-  parts: Awaited<ReturnType<typeof getPostsInSeries>>
-}
-const inProgress: InProgress[] = []
+const inProgress: { name: string; slug: string; count: number; latest: Date }[] = []
 for (const { series, count } of seriesAll.slice(0, 4)) {
   const parts = await getPostsInSeries(series)
   const latest = parts.reduce(
     (max, p) => (p.data.pubDate > max ? p.data.pubDate : max),
     parts[0].data.pubDate,
   )
-  // Total must never be less than what's already published (otherwise the
-  // label reads "part 29 of 12"). Use the larger of: published count, the
-  // largest explicit `part` field, or published+1 to hint one more coming.
-  const explicitMax = parts.reduce((mx, p) => {
-    const v = typeof p.data.part === 'number' ? p.data.part : Number(p.data.part)
-    return Number.isFinite(v) ? Math.max(mx, v) : mx
-  }, 0)
-  const total = Math.max(count, explicitMax, count + 1)
-  inProgress.push({
-    name: series,
-    slug: slugifyTag(series),
-    total,
-    published: count,
-    current: count, // last filled dot is "current"
-    latest,
-    parts,
-  })
+  inProgress.push({ name: series, slug: slugifyTag(series), count, latest })
 }
 inProgress.sort((a, b) => b.latest.valueOf() - a.latest.valueOf())
 
 const cats = await getCategoriesWithCounts()
 
-// Masthead dateline — today, long form.
 const now = new Date()
 const dateline = now.toLocaleDateString('en-GB', {
   weekday: 'long',
@@ -83,10 +53,7 @@ const dateline = now.toLocaleDateString('en-GB', {
   month: 'long',
   year: 'numeric',
 })
-const leadVertical = lead ? postVertical(lead) : 'personal'
-const leadRt = lead ? (lead.data.readingTime ?? readingTimeFor(lead)) : ''
 
-// "Days since" helper for the in-progress rail.
 function ago(date: Date): string {
   const days = Math.floor((Date.now() - date.valueOf()) / 86_400_000)
   if (days < 1) return 'today'
@@ -108,17 +75,15 @@ const jsonLd = {
   author: { '@type': 'Person', name: SITE_CONFIG.author.name, url: SITE_CONFIG.author.url },
 }
 
-// Season ring — the signature element. Four arcs; the current season is lit.
-// Northern-hemisphere meteorological seasons keep the wheel honest to the date.
+// Season ring — the seed the stem grows from. Northern-hemisphere seasons.
 const SEASONS = ['Spring', 'Summer', 'Autumn', 'Winter'] as const
-const monthSeason = [3, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3] // Jan..Dec → index
+const monthSeason = [3, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3]
 const seasonIdx = monthSeason[now.getMonth()]
 const seasonName = SEASONS[seasonIdx]
-// Each season = a 90° arc. Circumference for r=52 ≈ 326.7; quarter ≈ 81.68.
 const R = 52
 const CIRC = 2 * Math.PI * R
 const QUARTER = CIRC / 4
-const GAP = 7 // arc gap so the four segments read as distinct
+const GAP = 7
 ---
 
 <BaseLayout
@@ -127,10 +92,10 @@ const GAP = 7 // arc gap so the four segments read as distinct
   jsonLd={jsonLd}
   hideSidebar
 >
-  <div class="container-page">
-    {/* Hero — thesis + the signature Season Ring (not a big-number/gradient). */}
-    <section class="hero" aria-label="Introduction">
-      <div class="hero-ring" role="img" aria-label={`Current season: ${seasonName}`}>
+  <div class="growth">
+    {/* ── Seed: hero thesis + Season Ring at the head of the stem ─────── */}
+    <section class="seed" aria-label="Introduction">
+      <div class="seed-ring" role="img" aria-label={`Current season: ${seasonName}`}>
         <svg viewBox="0 0 130 130" class="ring-svg" aria-hidden="true">
           <circle class="ring-track" cx="65" cy="65" r={R} />
           {SEASONS.map((_, i) => (
@@ -148,521 +113,360 @@ const GAP = 7 // arc gap so the four segments read as distinct
         <span class="ring-label mono">{seasonName}</span>
       </div>
 
-      <div class="hero-thesis">
-        <p class="hero-eyebrow mono">A sustainable-living notebook</p>
-        <h1 class="hero-headline">
-          Live lightly. <span class="hero-em">Waste less</span>, verify the claims, and mend what breaks.
-        </h1>
-        <p class="hero-sub">
-          Practical habits over guilt. Every post is something you can do this week — read the bin,
-          check the label, fix the thing you were about to throw out.
-        </p>
-        <p class="hero-dateline mono">
-          <span class="hero-dot" aria-hidden="true"></span>
-          {seasonName} · {dateline} · <span class="count">{allPosts.length}</span> field notes
-        </p>
-      </div>
-    </section>
-
-
-    {lead && (
-      <>
-        <hr class="rule-heavy" />
-        <section class="lead" data-vertical={leadVertical} aria-labelledby="lead-title">
-          <a class="lead-link" href={`/blog/${lead.id}`}>
-            <span class="lead-kicker mono">
-              <span class="lead-tick" aria-hidden="true"></span>
-              <span class="lead-desk">{verticalLabel(leadVertical)}</span>
-              <span class="lead-flag">Lead story</span>
-            </span>
-            <h2 id="lead-title" class="lead-title">{lead.data.title}</h2>
-            <p class="lead-dek">{lead.data.description}</p>
-            <span class="lead-meta mono">
-              <time datetime={lead.data.pubDate.toISOString()}>{lead.data.pubDate.toISOString().slice(0, 10)}</time>
-              <span aria-hidden="true">·</span>
-              <span>{leadRt}</span>
-            </span>
-          </a>
-        </section>
-      </>
-    )}
-
-    <hr class="hairline" />
-
-    {/* Stratum 1 — IN PROGRESS. */}
-    {inProgress.length > 0 && (
-      <section class="stratum stratum-progress" aria-labelledby="s-progress">
-        <h2 id="s-progress" class="stratum-h mono">In progress</h2>
-        <ul class="progress-list">
-          {inProgress.map((s) => (
-            <li class="progress-row">
-              <a class="progress-link" href={`/series/${s.slug}/`}>
-                <span class="progress-name">{s.name}</span>
-                <span class="progress-meta mono">part {s.published} of {s.total}</span>
-                <span class="progress-spine-mount">
-                  <SeriesSpine
-                    total={s.total}
-                    published={s.published}
-                    current={s.current}
-                    size="md"
-                  />
-                </span>
-                <span class="progress-ago mono">{ago(s.latest)}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-    )}
-
-    <hr class="hairline" />
-
-    {/* Stratum 2 — RECENT. */}
-    <section class="stratum stratum-recent" aria-labelledby="s-recent">
-      <h2 id="s-recent" class="stratum-h mono">Recent</h2>
-      <ul class="recent-list">
-        {recentPosts.map((p) => (
-          <li class="recent-row" data-vertical={postVertical(p)}>
-            <a class="recent-link" href={`/blog/${p.id}`}>
-              <time class="recent-date mono" datetime={p.data.pubDate.toISOString()}>
-                {p.data.pubDate.toISOString().slice(0, 10)}
-              </time>
-              <span class="recent-meat">
-                <span class="recent-kicker mono">
-                  <span class="recent-tick" aria-hidden="true"></span>{verticalLabel(postVertical(p))}
-                </span>
-                <span class="recent-title">{p.data.title}</span>
-                <span class="recent-dek">{p.data.description}</span>
-              </span>
-              <span class="recent-rt mono">{p.data.readingTime ?? readingTimeFor(p)}</span>
-            </a>
-          </li>
-        ))}
-      </ul>
-      <p class="all-link">
-        <a href="/archive/">all {allPosts.length} posts in the archive →</a>
+      <p class="seed-eyebrow mono">A sustainable-living notebook</p>
+      <h1 class="seed-headline">
+        Live lightly. <span class="seed-em">Waste less</span>, verify the claims, and mend what breaks.
+      </h1>
+      <p class="seed-sub">
+        Practical habits over guilt. Every note is something you can do this week — read the bin,
+        check the label, fix the thing you were about to throw out.
+      </p>
+      <p class="seed-dateline mono">
+        <span class="seed-dot" aria-hidden="true"></span>
+        {seasonName} · {dateline} · <span class="count">{allPosts.length}</span> field notes
       </p>
     </section>
 
-    <hr class="hairline" />
+    {/* ── The growth timeline: central stem, posts branching L/R ──────── */}
+    <ol class="stem" aria-label="Field notes, newest first">
+      {timeline.map((p, i) => {
+        const v = postVertical(p)
+        const side = i % 2 === 0 ? 'r' : 'l'
+        const rt = p.data.readingTime ?? readingTimeFor(p)
+        return (
+          <li class="node" data-side={side} data-vertical={v}>
+            <span class="node-branch" aria-hidden="true"></span>
+            <span class="node-bud" aria-hidden="true"></span>
+            <a class="node-card" href={`/blog/${p.id}`}>
+              <span class="node-kicker mono">
+                <span class="node-tick" aria-hidden="true"></span>{verticalLabel(v)}
+              </span>
+              <span class="node-title">{p.data.title}</span>
+              <span class="node-dek">{p.data.description}</span>
+              <span class="node-meta mono">
+                <time datetime={p.data.pubDate.toISOString()}>
+                  {p.data.pubDate.toISOString().slice(0, 10)}
+                </time>
+                <span aria-hidden="true">·</span>
+                <span>{rt}</span>
+              </span>
+            </a>
+          </li>
+        )
+      })}
+      {/* stem terminus — a root marker pointing to the archive */}
+      <li class="node node-root">
+        <span class="node-branch" aria-hidden="true"></span>
+        <a class="root-link" href="/archive/">
+          Down to the roots — all {allPosts.length} notes in the archive →
+        </a>
+      </li>
+    </ol>
 
-    {/* Stratum 3 — BY CATEGORY (single typographic row). */}
-    {cats.length > 0 && (
-      <section class="stratum stratum-cats" aria-labelledby="s-cats">
-        <h2 id="s-cats" class="stratum-h mono">By category</h2>
-        <p class="cats-row">
-          {cats.map((c, i) => (
-            <>
-              {i > 0 && <span class="cats-dot" aria-hidden="true">·</span>}
-              <a href={`/categories/${slugifyTag(c.category)}/`} class="cats-link" data-vertical={verticalFor(c.category)}>
-                <span class="cats-name">{c.category}</span>
-                <span class="cats-count mono">({c.count})</span>
-              </a>
-            </>
-          ))}
-        </p>
-      </section>
-    )}
+    {/* ── Understory: threads-in-progress + desks, off the main stem ──── */}
+    <section class="understory" aria-label="More to browse">
+      {inProgress.length > 0 && (
+        <div class="under-block">
+          <h2 class="under-h mono">Threads still growing</h2>
+          <ul class="thread-list">
+            {inProgress.map((s) => (
+              <li>
+                <a class="thread-link" href={`/series/${s.slug}/`}>
+                  <span class="thread-name">{s.name}</span>
+                  <span class="thread-meta mono">{s.count} parts · {ago(s.latest)}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {cats.length > 0 && (
+        <div class="under-block">
+          <h2 class="under-h mono">Desks</h2>
+          <p class="desk-row">
+            {cats.map((c, i) => (
+              <>
+                {i > 0 && <span class="desk-sep" aria-hidden="true">·</span>}
+                <a
+                  href={`/categories/${slugifyTag(c.category)}/`}
+                  class="desk-link"
+                  data-vertical={verticalFor(c.category)}
+                >
+                  <span class="desk-name">{c.category}</span>
+                  <span class="desk-count mono">({c.count})</span>
+                </a>
+              </>
+            ))}
+          </p>
+        </div>
+      )}
+    </section>
   </div>
 </BaseLayout>
 
 <style>
-  .container-page {
-    max-width: 920px;
+  .growth {
+    max-width: 940px;
     margin-inline: auto;
-    padding-inline: clamp(1.25rem, 4vw, 2rem);
+    padding-inline: clamp(1rem, 4vw, 2rem);
   }
 
-  /* ── Hero — thesis + Season Ring signature ─────────────────────────── */
-
-  .hero {
-    display: grid;
-    grid-template-columns: auto 1fr;
+  /* ── Seed / hero ─────────────────────────────────────────────────── */
+  .seed {
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: clamp(1.5rem, 5vw, 3rem);
-    padding-block: clamp(2rem, 6vw, 3.5rem) 1.75rem;
+    text-align: center;
+    gap: 0;
+    padding-block: clamp(2.25rem, 6vw, 3.75rem) 1rem;
   }
-  @media (max-width: 640px) {
-    .hero {
-      grid-template-columns: 1fr;
-      gap: 1.5rem;
-    }
-  }
-
-  .hero-ring {
-    position: relative;
+  .seed-ring {
     display: inline-flex;
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
+    margin-bottom: 1.5rem;
   }
   .ring-svg {
-    width: clamp(128px, 26vw, 168px);
+    width: clamp(96px, 18vw, 128px);
     height: auto;
-    transform: rotate(-90deg); /* start Spring at 12 o'clock */
+    transform: rotate(-90deg);
   }
-  .ring-track {
-    fill: none;
-    stroke: var(--rule);
-    stroke-width: 1;
-  }
-  .ring-arc {
-    fill: none;
-    stroke: var(--rule-strong);
-    stroke-width: 6;
-    stroke-linecap: round;
-  }
-  .ring-arc.is-current {
-    stroke: var(--accent);
-  }
-  .ring-seed {
-    fill: var(--accent);
-  }
+  .ring-track { fill: none; stroke: var(--rule); stroke-width: 1; }
+  .ring-arc { fill: none; stroke: var(--rule-strong); stroke-width: 6; stroke-linecap: round; }
+  .ring-arc.is-current { stroke: var(--accent); }
+  .ring-seed { fill: var(--accent); }
   @media (prefers-reduced-motion: no-preference) {
-    .ring-arc.is-current {
-      animation: ring-breathe 5.5s var(--ease-in-out) infinite;
-      transform-origin: 65px 65px;
-    }
-    .ring-seed {
-      animation: seed-pulse 5.5s var(--ease-in-out) infinite;
-      transform-origin: 65px 65px;
-    }
+    .ring-arc.is-current { animation: ring-breathe 5.5s var(--ease-in-out) infinite; transform-origin: 65px 65px; }
+    .ring-seed { animation: seed-pulse 5.5s var(--ease-in-out) infinite; transform-origin: 65px 65px; }
   }
-  @keyframes ring-breathe {
-    0%, 100% { opacity: 0.72; }
-    50% { opacity: 1; }
-  }
-  @keyframes seed-pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.22); }
-  }
+  @keyframes ring-breathe { 0%, 100% { opacity: 0.72; } 50% { opacity: 1; } }
+  @keyframes seed-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.22); } }
   .ring-label {
-    font-size: 11px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--accent);
-    font-weight: 700;
+    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700;
   }
-
-  .hero-eyebrow {
-    font-size: 11px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--ink-mute);
-    margin: 0 0 1rem;
+  .seed-eyebrow {
+    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--ink-mute); margin: 0 0 0.9rem;
   }
-  .hero-headline {
+  .seed-headline {
     font-family: var(--font-display);
     font-optical-sizing: auto;
-    font-size: clamp(2rem, 5.4vw, 3.4rem);
+    font-size: clamp(2rem, 5.2vw, 3.2rem);
     font-weight: 600;
     letter-spacing: -0.02em;
-    line-height: 1.06;
+    line-height: 1.07;
     color: var(--ink);
-    margin: 0;
-    max-width: 18ch;
-  }
-  .hero-em {
-    font-style: italic;
-    color: var(--accent);
-  }
-  .hero-sub {
-    font-family: var(--font-body);
-    font-size: clamp(1.0625rem, 2vw, 1.25rem);
-    line-height: 1.55;
-    color: var(--ink-mute);
-    margin: 1.125rem 0 0;
-    max-width: 54ch;
-  }
-  .hero-dateline {
-    display: inline-flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.45rem;
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--ink-mute);
-    margin: 1.5rem 0 0;
-  }
-  .hero-dateline .count { color: var(--ink); }
-  .hero-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--accent);
-    flex: 0 0 auto;
-  }
-
-  .rule-heavy {
-    height: 3px;
-    background: var(--accent);
-    border: 0;
-    border-radius: 2px;
-    margin: 0;
-  }
-
-  /* ── Lead story ────────────────────────────────────────────────────── */
-
-  .lead {
-    --v: var(--v-personal);
-    padding-block: 1.75rem 0.5rem;
-  }
-  .lead[data-vertical='dev'] { --v: var(--v-dev); }
-  .lead[data-vertical='finance'] { --v: var(--v-finance); }
-  .lead[data-vertical='culture'] { --v: var(--v-culture); }
-  .lead[data-vertical='health'] { --v: var(--v-health); }
-  .lead-link { display: grid; gap: 0.625rem; color: var(--ink); text-decoration: none; }
-  .lead-kicker {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-mute);
-  }
-  .lead-tick { width: 8px; height: 8px; background: var(--v); flex: 0 0 auto; }
-  .lead-desk { color: var(--v); font-weight: 500; }
-  .lead-flag { border-left: 1px solid var(--rule); padding-left: 0.5rem; color: var(--accent); }
-  .lead-title {
-    font-family: var(--font-display);
-    font-size: clamp(1.875rem, 4.5vw, 2.75rem);
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    line-height: 1.08;
     margin: 0;
     max-width: 20ch;
   }
-  .lead-link:hover .lead-title { color: var(--accent); }
-  .lead-dek {
-    font-family: var(--font-display);
-    font-size: 1.125rem;
-    line-height: 1.5;
+  .seed-em { font-style: italic; color: var(--accent); }
+  .seed-sub {
+    font-family: var(--font-body);
+    font-size: clamp(1.0625rem, 2vw, 1.2rem);
+    line-height: 1.55;
     color: var(--ink-mute);
-    margin: 0;
-    max-width: 58ch;
+    margin: 1.1rem 0 0;
+    max-width: 52ch;
   }
-  .lead-meta { display: inline-flex; gap: 0.5rem; font-size: 11px; letter-spacing: 0.06em; color: var(--ink-mute); }
-
-  /* ── Strata ────────────────────────────────────────────────────────── */
-
-  .stratum { padding-block: 1.75rem 1.75rem; }
-  .stratum-h {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
+  .seed-dateline {
+    display: inline-flex; align-items: center; flex-wrap: wrap; justify-content: center;
+    gap: 0.45rem;
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
     color: var(--ink-mute);
-    font-weight: 500;
-    margin: 0 0 1.25rem;
+    margin: 1.4rem 0 0;
   }
+  .seed-dateline .count { color: var(--ink); }
+  .seed-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: 0 0 auto; }
 
-  /* ── In progress ──────────────────────────────────────────────────── */
-
-  .progress-list {
+  /* ── The stem (the archetype) ────────────────────────────────────── */
+  .stem {
     list-style: none;
+    margin: 1.5rem 0 0;
     padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.625rem;
-  }
-  .progress-row { padding: 0; }
-  .progress-link {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto auto;
-    gap: 1rem;
-    align-items: baseline;
-    color: var(--ink);
-    text-decoration: none;
-    padding-block: 0.5rem;
-  }
-  .progress-link:hover { color: var(--accent); }
-  .progress-link:hover .progress-meta,
-  .progress-link:hover .progress-ago { color: var(--accent); }
-  .progress-name {
-    font-family: var(--font-display);
-    font-size: 1.0625rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    color: var(--ink);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .progress-meta, .progress-ago {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.06em;
-    color: var(--ink-mute);
-  }
-  .progress-spine-mount { display: inline-flex; }
-
-  @media (max-width: 640px) {
-    .progress-link {
-      grid-template-columns: minmax(0, 1fr) auto;
-      grid-template-areas:
-        'name      ago'
-        'meta      meta'
-        'spine     spine';
-      row-gap: 0.25rem;
-    }
-    .progress-name { grid-area: name; }
-    .progress-meta { grid-area: meta; }
-    .progress-spine-mount { grid-area: spine; }
-    .progress-ago { grid-area: ago; text-align: right; }
-  }
-
-  /* ── Recent ───────────────────────────────────────────────────────── */
-
-  .recent-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-  }
-  .recent-row {
-    --v: var(--v-personal);
-    border-bottom: 1px solid color-mix(in oklab, var(--rule) 70%, transparent);
-  }
-  .recent-row[data-vertical='dev'] { --v: var(--v-dev); }
-  .recent-row[data-vertical='finance'] { --v: var(--v-finance); }
-  .recent-row[data-vertical='culture'] { --v: var(--v-culture); }
-  .recent-row[data-vertical='health'] { --v: var(--v-health); }
-  .recent-row:last-child { border-bottom: 0; }
-  .recent-link {
-    display: grid;
-    grid-template-columns: 100px minmax(0, 1fr) auto;
-    gap: 1.25rem;
-    align-items: baseline;
-    color: var(--ink);
-    text-decoration: none;
-    padding-block: 0.875rem;
-    padding-left: 0.75rem;
-    margin-left: -0.75rem;
-    border-left: 2px solid transparent;
-    transition: border-color var(--dur-fast, 120ms) ease;
-  }
-  .recent-link:hover { border-left-color: var(--v); }
-  .recent-link:hover .recent-title { color: var(--accent); }
-  .recent-link:hover .recent-date,
-  .recent-link:hover .recent-rt { color: var(--accent); }
-
-  .recent-kicker {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    font-size: 10px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--v);
-    font-weight: 500;
-  }
-  .recent-tick { width: 6px; height: 6px; background: var(--v); flex: 0 0 auto; }
-
-  .recent-date {
-    color: var(--ink-mute);
-    font-family: var(--font-mono);
-    font-size: 12px;
-    letter-spacing: 0.04em;
     position: relative;
-    padding-left: 0.875rem;
   }
-  /* dateline gutter: coral tick marks the wire-feed timestamp */
-  .recent-date::before {
+  /* central growth line, drawn behind the nodes */
+  .stem::before {
     content: '';
     position: absolute;
-    left: 0;
-    top: 0.12em;
-    width: 3px;
-    height: 0.7em;
-    background: var(--cobalt);
+    top: 0;
+    bottom: 3.5rem;
+    left: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+    background: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--accent) 70%, transparent),
+      color-mix(in oklab, var(--accent) 45%, var(--rule)) 88%,
+      transparent
+    );
   }
-  .recent-meat {
+
+  .node {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding-block: clamp(1.1rem, 2.5vw, 1.75rem);
+    --v: var(--v-personal);
+  }
+  .node[data-vertical='dev'] { --v: var(--v-dev); }
+  .node[data-vertical='finance'] { --v: var(--v-finance); }
+  .node[data-vertical='culture'] { --v: var(--v-culture); }
+  .node[data-vertical='health'] { --v: var(--v-health); }
+
+  /* card lands in the left or right column depending on side */
+  .node[data-side='r'] .node-card { grid-column: 2; padding-left: 2rem; text-align: left; }
+  .node[data-side='l'] .node-card { grid-column: 1; padding-right: 2rem; text-align: right; align-items: flex-end; }
+
+  /* the branch: a hairline reaching from the central stem out to the card */
+  .node-branch {
+    position: absolute;
+    top: 2.1rem;
+    height: 2px;
+    width: calc(50% - 1.75rem);
+    background: color-mix(in oklab, var(--v) 62%, var(--rule));
+  }
+  .node[data-side='r'] .node-branch { left: 50%; }
+  .node[data-side='l'] .node-branch { right: 50%; }
+
+  /* the bud: a leaf-shaped node sitting on the central stem */
+  .node-bud {
+    position: absolute;
+    top: calc(2.1rem - 6px);
+    left: 50%;
+    width: 13px;
+    height: 13px;
+    transform: translateX(-50%) rotate(45deg);
+    border-radius: 50% 50% 50% 0;
+    background: var(--v);
+    box-shadow: 0 0 0 3px var(--paper), 0 0 0 4px color-mix(in oklab, var(--v) 40%, transparent);
+    z-index: 1;
+  }
+
+  .node-card {
     display: flex;
     flex-direction: column;
-    gap: 0.125rem;
-    min-width: 0;
-  }
-  .recent-title {
-    font-family: var(--font-display);
-    font-size: 1.125rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    color: var(--ink);
-    line-height: 1.3;
-  }
-  .recent-dek {
-    font-family: var(--font-body);
-    font-size: 14.5px;
-    color: var(--ink-mute);
-    line-height: 1.5;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    overflow: hidden;
-  }
-  .recent-rt {
-    color: var(--ink-mute);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.04em;
-    white-space: nowrap;
-  }
-
-  @media (max-width: 640px) {
-    .recent-link {
-      grid-template-columns: minmax(0, 1fr) auto;
-      grid-template-areas:
-        'date   rt'
-        'meat   meat';
-      row-gap: 0.25rem;
-    }
-    .recent-date { grid-area: date; }
-    .recent-rt { grid-area: rt; text-align: right; }
-    .recent-meat { grid-area: meat; }
-  }
-
-  .all-link {
-    margin: 1.25rem 0 0;
-    font-family: var(--font-sans);
-    font-size: 13.6px;
-  }
-  .all-link a {
-    color: var(--ink-mute);
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    text-decoration-color: var(--rule);
-  }
-  .all-link a:hover { color: var(--accent); text-decoration-color: var(--accent); }
-
-  /* ── By category (one row) ────────────────────────────────────────── */
-
-  .cats-row {
-    margin: 0;
-    line-height: 2;
-    color: var(--ink);
-  }
-  .cats-link {
-    --v: var(--v-personal);
+    gap: 0.35rem;
     color: var(--ink);
     text-decoration: none;
-    margin-inline: 0.125rem;
   }
-  .cats-link[data-vertical='dev'] { --v: var(--v-dev); }
-  .cats-link[data-vertical='finance'] { --v: var(--v-finance); }
-  .cats-link[data-vertical='culture'] { --v: var(--v-culture); }
-  .cats-link[data-vertical='health'] { --v: var(--v-health); }
-  .cats-link:hover .cats-name { color: var(--v); }
-  .cats-name {
+  .node-kicker {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--v); font-weight: 500;
+  }
+  .node[data-side='l'] .node-kicker { flex-direction: row-reverse; }
+  .node-tick { width: 6px; height: 6px; background: var(--v); flex: 0 0 auto; border-radius: 50% 50% 50% 0; transform: rotate(45deg); }
+  .node-title {
     font-family: var(--font-display);
-    font-size: 17px;
-    font-weight: 500;
-    letter-spacing: -0.01em;
+    font-size: clamp(1.15rem, 2.4vw, 1.45rem);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    color: var(--ink);
   }
-  .cats-count {
+  .node-card:hover .node-title { color: var(--accent); }
+  .node-dek {
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.5;
     color: var(--ink-mute);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    margin-left: 0.25rem;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+    max-width: 44ch;
   }
-  .cats-dot { color: var(--rule); margin-inline: 0.625rem; }
+  .node-meta {
+    display: inline-flex; gap: 0.5rem;
+    font-size: 11px; letter-spacing: 0.05em; color: var(--ink-mute);
+  }
+  .node[data-side='l'] .node-meta { flex-direction: row-reverse; }
+
+  /* root terminus */
+  .node-root { grid-template-columns: 1fr; justify-items: center; padding-top: 1.5rem; }
+  .node-root .node-branch {
+    display: block;
+    position: static;
+    width: 2px;
+    height: 2.25rem;
+    background: color-mix(in oklab, var(--accent) 55%, var(--rule));
+    margin: 0 auto 0.75rem;
+  }
+  .root-link {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--ink-mute);
+    text-decoration: none;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 2px;
+  }
+  .root-link:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Understory ──────────────────────────────────────────────────── */
+  .understory {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--rule);
+    display: grid;
+    gap: 2.25rem;
+  }
+  @media (min-width: 768px) { .understory { grid-template-columns: 1fr 1fr; gap: 3rem; } }
+  .under-h {
+    font-family: var(--font-mono);
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.18em;
+    color: var(--ink-mute); font-weight: 500; margin: 0 0 1rem;
+  }
+  .thread-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.65rem; }
+  .thread-link {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 0.75rem;
+    color: var(--ink); text-decoration: none; padding-left: 1rem; position: relative;
+  }
+  .thread-link::before {
+    content: '';
+    position: absolute; left: 0; top: 0.55em;
+    width: 7px; height: 7px; border-radius: 50% 50% 50% 0;
+    transform: rotate(45deg); background: var(--accent);
+  }
+  .thread-name { font-family: var(--font-display); font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em; }
+  .thread-link:hover .thread-name { color: var(--accent); }
+  .thread-meta { font-family: var(--font-mono); font-size: 11px; color: var(--ink-mute); letter-spacing: 0.04em; }
+
+  .desk-row { margin: 0; line-height: 2; color: var(--ink); }
+  .desk-link { --v: var(--v-personal); color: var(--ink); text-decoration: none; margin-inline: 0.125rem; }
+  .desk-link[data-vertical='dev'] { --v: var(--v-dev); }
+  .desk-link[data-vertical='finance'] { --v: var(--v-finance); }
+  .desk-link[data-vertical='culture'] { --v: var(--v-culture); }
+  .desk-link[data-vertical='health'] { --v: var(--v-health); }
+  .desk-link:hover .desk-name { color: var(--v); }
+  .desk-name { font-family: var(--font-display); font-size: 17px; font-weight: 500; letter-spacing: -0.01em; }
+  .desk-count { color: var(--ink-mute); font-family: var(--font-mono); font-size: 11px; margin-left: 0.25rem; }
+  .desk-sep { color: var(--rule); margin-inline: 0.55rem; }
+
+  /* ── Mobile: stem climbs the left gutter, every node branches right ── */
+  @media (max-width: 640px) {
+    .stem::before { left: 7px; transform: none; }
+    .node { grid-template-columns: 1fr; padding-left: 2.25rem; padding-block: 1.25rem; }
+    .node[data-side='r'] .node-card,
+    .node[data-side='l'] .node-card {
+      grid-column: 1; padding-left: 0; padding-right: 0;
+      text-align: left; align-items: flex-start;
+    }
+    .node[data-side='l'] .node-kicker,
+    .node[data-side='l'] .node-meta { flex-direction: row; }
+    .node-branch {
+      top: 1.75rem !important;
+      left: 7px !important;
+      right: auto !important;
+      width: 1.4rem;
+    }
+    .node-bud { top: calc(1.75rem - 6px); left: 7px; }
+    .node-root { padding-left: 0; }
+    .node-root .node-branch { position: static; margin-left: 7px; }
+  }
 </style>
